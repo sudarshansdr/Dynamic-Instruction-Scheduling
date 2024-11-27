@@ -6,7 +6,6 @@
 #include <cmath>
 #include "sim_proc.h"
 #include <climits>
-
 bool end = true;
 int ROBHEAD = 0;
 int ROBTAIL = 0;
@@ -19,26 +18,20 @@ int lastcycle = 0;
 void WakeupDIorRR(std::queue<instructions> &DIorRR, int ReadyDest)
 {
     std::queue<instructions> tempQueue; // Temporary queue to hold updated instructions
-
     while (!DIorRR.empty())
     {
-        instructions currentInst = DIorRR.front(); // Get the front instruction
-        DIorRR.pop();                              // Remove it from the original queue
-
-        // Check if the pc matches the target PC
+        instructions currentInst = DIorRR.front();
+        DIorRR.pop();
         if (currentInst.src1 == ReadyDest)
         {
-            currentInst.src1ready = true; // Set src1ready to true
+            currentInst.src1ready = true;
         }
         if (currentInst.src2 == ReadyDest)
         {
-            currentInst.src2ready = true; // Set src1ready to true
+            currentInst.src2ready = true;
         }
-
-        tempQueue.push(currentInst); // Push the instruction to the temporary queue
+        tempQueue.push(currentInst);
     }
-
-    // Replace the original queue with the updated queue
     DIorRR = std::move(tempQueue);
 }
 
@@ -52,7 +45,6 @@ void WakeupIssueQ(issueQ *IssueQ, int iq_size, int PCnumToSearch)
             {
                 IssueQ[i].src1ready = true; // Set src1ready to true
             }
-
             if (IssueQ[i].src2 == PCnumToSearch)
             {
                 IssueQ[i].src2ready = true; // Set src1ready to true
@@ -163,10 +155,8 @@ void FetchInstr(FILE *FP, proc_params params, ROB *rob)
                     DE.push(instr);
                 }
             }
-
             else
             {
-
                 instructions instr;
                 instr.pc = pc;
                 instr.op_type = instr.cycles.OperationType = op_type;
@@ -186,16 +176,13 @@ void FetchInstr(FILE *FP, proc_params params, ROB *rob)
 
 void Retire(ROB *rob, int WIDTH, int rob_size)
 {
-    int retiredCount = 0; // Counter for retired instructions
-
-    // Loop to retire up to WIDTH instructions
+    int retiredCount = 0;
     while (retiredCount < WIDTH && (ROBHEAD != ROBTAIL || rob[ROBHEAD].robpc != 0))
     {
         if (ROBHEAD == ROBTAIL && rob[ROBHEAD].robpc == 0)
         {
             ROBTAIL--;
         }
-        // Check if the instruction at the ROBHEAD is ready
         if (rob[ROBHEAD].ready)
         {
             rob[ROBHEAD].cycles.retire_time = (clock - rob[ROBHEAD].cycles.retire_first);
@@ -206,7 +193,6 @@ void Retire(ROB *rob, int WIDTH, int rob_size)
                 lastseq = seq + 1;
                 lastcycle = rob[ROBHEAD].cycles.retire_first + rob[ROBHEAD].cycles.retire_time;
             }
-
             rob[ROBHEAD].robpc = 0;
             rob[ROBHEAD].dst = -1;
             rob[ROBHEAD].value = -1;
@@ -219,7 +205,6 @@ void Retire(ROB *rob, int WIDTH, int rob_size)
         }
         else
         {
-            // If the instruction is not ready, stop retiring further instructions
             break;
         }
     }
@@ -239,7 +224,6 @@ void Writeback(ROB *rob, int rob_size)
                 rob[i].cycles = currentInst.cycles;
                 rob[i].cycles.writeback_time = (clock - currentInst.cycles.writeback_first);
                 rob[i].cycles.retire_first = clock;
-
                 break;
             }
         }
@@ -252,10 +236,8 @@ void Execute(executelist *execlist, int width, issueQ *IssueQ, int iq_size, ROB 
     {
         if (execlist[i].valid) // Check if valid is true
         {
-
             if (execlist[i].OpCounter == 1)
             {
-
                 instructions instr;
                 instr.dest = execlist[i].dest;
                 instr.op_type = execlist[i].OPtype;
@@ -264,18 +246,14 @@ void Execute(executelist *execlist, int width, issueQ *IssueQ, int iq_size, ROB 
                 instr.src1ready = true;
                 instr.src2ready = true;
                 instr.src2 = execlist[i].src2;
-
                 instr.cycles = execlist[i].cycles;
                 instr.cycles.execute_time = (clock - execlist[i].cycles.execute_first);
                 instr.cycles.writeback_first = clock;
-
                 WB.push(instr);
                 execlist[i].valid = false;
-
                 WakeupDIorRR(DI, execlist[i].dest);
                 WakeupDIorRR(RR, execlist[i].dest);
                 WakeupIssueQ(IssueQ, iq_size, execlist[i].dest);
-
                 int in = execlist[i].dest;
                 for (int j = 0; j < 67; j++)
                 {
@@ -319,7 +297,6 @@ void Issue(issueQ *IssueQ, int width, int iq_size, executelist *execlist)
             execlist[executelistindex].cycles = IssueQ[j].cycles;
             execlist[executelistindex].cycles.issue_time = (clock - IssueQ[j].cycles.issue_first);
             execlist[executelistindex].cycles.execute_first = clock;
-
             execlist[executelistindex].valid = true;
             issuedInstructions++;
         }
@@ -385,8 +362,7 @@ void RegRead()
 
 void Rename(unsigned long int ROBSIZE, unsigned long int WIDTH, RMT rmt[67], ROB *rob)
 {
-    unsigned long int freeEntries = (ROBTAIL >= ROBHEAD && rob[ROBHEAD].robpc == 0) ? (ROBSIZE - (ROBTAIL - ROBHEAD)) : (ROBHEAD - ROBTAIL); // rob[ROBHEAD].robpc
-
+    unsigned long int freeEntries = (ROBTAIL >= ROBHEAD && rob[ROBHEAD].robpc == 0) ? (ROBSIZE - (ROBTAIL - ROBHEAD)) : (ROBHEAD - ROBTAIL);
     if (RR.empty() && (freeEntries >= WIDTH) && !RN.empty())
     {
         while (!RN.empty())
@@ -405,7 +381,6 @@ void Rename(unsigned long int ROBSIZE, unsigned long int WIDTH, RMT rmt[67], ROB
                 RN.front().src2 = rmt[RN.front().src2].robtag;
                 RN.front().src2ready = false;
             }
-
             // Step2: Allocate new rob from the robtable to  the RMT table
             if (RN.front().dest != -1)
             {
@@ -433,8 +408,6 @@ void Rename(unsigned long int ROBSIZE, unsigned long int WIDTH, RMT rmt[67], ROB
 
             RN.front().cycles.rename_time = (clock - RN.front().cycles.rename_first);
             RN.front().cycles.regRead_first = clock;
-            // printf("Rename source 1, in RR = %d", RN.front().src2);
-
             RR.push(RN.front()); // Push the front element of DE to RN
             RN.pop();            // Remove the front element from DE
             ROBTAIL = (ROBTAIL + 1) % ROBSIZE;
@@ -448,10 +421,8 @@ void Decode()
     {
         while (!DE.empty())
         {
-
             DE.front().cycles.decode_time = (clock - DE.front().cycles.decode_first);
             DE.front().cycles.rename_first = clock;
-            // printf("Decode source 1, in RN = %d", DE.front().src2);
             RN.push(DE.front()); // Push the front element of DE to RN
             DE.pop();            // Remove the front element from DE
         }
@@ -460,10 +431,8 @@ void Decode()
 
 void Fetch(FILE *FP, proc_params params, ROB *rob)
 {
-    // Variables are read from trace file
     FetchInstr(FP, params, rob);
 }
-
 /*  argc holds the number of command line arguments
     argv[] holds the commands themselves
 
@@ -475,33 +444,20 @@ void Fetch(FILE *FP, proc_params params, ROB *rob)
     argv[2] = "32"
     ... and so on
 */
-
 int main(int argc, char *argv[])
 {
     FILE *FP;           // File handler
     char *trace_file;   // Variable that holds trace file name;
     proc_params params; // look at sim_bp.h header file for the the definition of struct proc_params
-    // int op_type, dest, src1, src2; // Variables are read from trace file
-    // uint64_t pc; // Variable holds the pc read from input file
-
-    // argv[0] = strdup("C:\\NCSU\\563\\Project 3\\Dynamic-Instruction-Scheduling\\project3_read_trace\\cpp_files\\sim.cc");
-    // argv[1] = strdup("16");
-    // argv[2] = strdup("8");
-    // argv[3] = strdup("2");
-    // argv[4] = strdup("C:\\NCSU\\563\\Project 3\\Dynamic-Instruction-Scheduling\\project3_read_trace\\cpp_files\\val_trace_gcc1.txt");
-    // argc = 5;
-
     if (argc != 5)
     {
         printf("Error: Wrong number of inputs:%d\n", argc - 1);
         exit(EXIT_FAILURE);
     }
-
     params.rob_size = strtoul(argv[1], NULL, 10);
     params.iq_size = strtoul(argv[2], NULL, 10);
     params.width = strtoul(argv[3], NULL, 10);
     trace_file = argv[4];
-
     // Open trace_file in read mode
     FP = fopen(trace_file, "r");
     if (FP == NULL)
@@ -510,19 +466,6 @@ int main(int argc, char *argv[])
         printf("Error: Unable to open file %s\n", trace_file);
         exit(EXIT_FAILURE);
     }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // The following loop just tests reading the trace and echoing it back to the screen.
-    //
-    // Replace this loop with the "do { } while (Advance_Cycle());" loop indicated in the Project 3 spec.
-    // Note: fscanf() calls -- to obtain a fetch bundle worth of instructions from the trace -- should be
-    // inside the Fetch() function.
-    //
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // while (fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF)
-    //     printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2); // Print to check if inputs have been read correctly
 
     RMT rmt[67];
     for (int i = 0; i < 67; ++i)
@@ -590,6 +533,5 @@ int main(int argc, char *argv[])
     printf("# Cycles                       = %d\n", lastcycle);
     float ipc = (float)lastseq / (float)(lastcycle);
     printf("# Instructions Per Cycle (IPC) = %.2f\n", ipc);
-
     return 0;
 }
